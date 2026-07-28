@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist/aljedrez",
+  "outputDirectory": "dist/aljedrez/browser",
   "rewrites": [
     {
       "source": "/(.*)",
