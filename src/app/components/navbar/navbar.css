@@ -1,0 +1,167 @@
+:host {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: block;
+}
+
+.cabecera {
+  border-bottom: 1px solid #1C273C;
+  background: rgba(10, 14, 23, 0.92);
+  color: #E2E8F0;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.barra {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  max-width: 86rem;
+  margin-inline: auto;
+  padding: 0.65rem clamp(0.75rem, 3vw, 2rem);
+}
+
+.marca, .acciones, .perfil {
+  display: flex;
+  align-items: center;
+}
+
+.marca {
+  justify-self: start;
+  gap: 0.65rem;
+  font-size: clamp(1.05rem, 3vw, 1.3rem);
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  color: #FFFFFF;
+}
+
+.marca img {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.marca strong {
+  color: #00F0FF;
+}
+
+.enlaces {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (min-width: 50rem) {
+  .barra {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .enlaces {
+    display: flex;
+    justify-content: center;
+  }
+}
+
+.enlaces a {
+  position: relative;
+  color: #8899AC;
+  text-decoration: none;
+  font-family: ui-monospace, SFMono-Regular, "Roboto Mono", monospace;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.enlaces a:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.enlaces a.activo {
+  color: #00F0FF;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+}
+
+.acciones {
+  gap: 0.75rem;
+}
+
+.perfil {
+  text-decoration: none;
+  gap: 0.65rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid #1C273C;
+  border-radius: 8px;
+  background: rgba(17, 23, 38, 0.6);
+  transition: all 0.2s ease;
+}
+
+.perfil:hover {
+  border-color: #FFB703;
+  box-shadow: 0 0 15px rgba(255, 183, 3, 0.2);
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  background: #FFB703;
+  color: #05070B;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-family: ui-monospace, SFMono-Regular, "Roboto Mono", monospace;
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.jugador .nombre {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 750;
+  color: #FFFFFF;
+}
+
+.elo {
+  font-family: ui-monospace, SFMono-Regular, "Roboto Mono", monospace;
+  font-size: 0.72rem;
+  color: #FFB703;
+  border-left: 1px solid #1C273C;
+  padding-left: 0.5rem;
+}
+
+.icono {
+  background: transparent;
+  border: 1px solid #1C273C;
+  color: #8899AC;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icono:hover {
+  border-color: #FF2A5F;
+  color: #FF2A5F;
+}
+
+.icono.menu {
+  display: grid;
+}
+
+@media (min-width: 50rem) {
+  .icono.menu {
+    display: none;
+  }
+}

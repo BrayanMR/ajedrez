@@ -1,0 +1,49 @@
+<footer class="pie">
+  <div class="marco">
+    <div class="columnas">
+      <div class="identidad">
+        <a class="marca" [routerLink]="conectado() ? '/dashboard' : '/inicio'">
+          <img src="imagenes/logo.png" alt="" width="36" height="36">
+          <span>Chess<strong>Rank</strong></span>
+        </a>
+        <p>Ajedrez competitivo en tiempo real con clasificación ELO.</p>
+      </div>
+
+      @if (conectado()) {
+        <nav class="grupo" aria-label="Competición">
+          <h2>Competición</h2>
+          <a routerLink="/dashboard">Lobby de partidas</a>
+          <a routerLink="/ranking">Ranking global</a>
+        </nav>
+        <nav class="grupo" aria-label="Tu cuenta">
+          <h2>Tu cuenta</h2>
+          <a routerLink="/perfil">Mi perfil</a>
+          <a routerLink="/historial">Mi historial</a>
+        </nav>
+      } @else {
+        <nav class="grupo" aria-label="Acceso a ChessRank">
+          <h2>Tu cuenta</h2>
+          <a routerLink="/inicio" [queryParams]="{ modo: 'login' }" (click)="inicioPagina()">Iniciar sesión</a>
+          <a routerLink="/inicio" [queryParams]="{ modo: 'registro' }" (click)="inicioPagina()">Crear cuenta</a>
+        </nav>
+      }
+
+      <div class="grupo guia">
+        <h2>Guía rápida</h2>
+        <details>
+          <summary>Cómo empezar</summary>
+          <p>Entra al lobby, crea una partida o únete a una que busque rival.</p>
+        </details>
+        <details>
+          <summary>Qué es el ELO</summary>
+          <p>Es la puntuación que determina tu posición en el ranking. Empiezas con 1.000 puntos.</p>
+        </details>
+      </div>
+    </div>
+
+    <div class="cierre">
+      <small>© {{ anio }} ChessRank</small>
+      <button type="button" (click)="inicioPagina()">Volver arriba <span aria-hidden="true">↑</span></button>
+    </div>
+  </div>
+</footer>

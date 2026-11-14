@@ -1,0 +1,74 @@
+:host { display: block; }
+
+.acceso {
+  display: grid;
+  min-height: 100dvh;
+  color: #f3f4f8;
+  background: #090b11;
+}
+
+.portada { display: none; }
+
+.panel {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  grid-template-columns: minmax(0, 30rem);
+  gap: 1.5rem;
+  min-width: 0;
+  padding: 2rem clamp(1rem, 4vw, 4rem);
+  background: radial-gradient(ellipse at 50% 5%, #332344 0%, transparent 48%), #0b0d15;
+}
+
+.formulario { width: 100%; }
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  font-size: 1.375rem;
+  font-weight: 750;
+  letter-spacing: -.045em;
+}
+
+.marca img {
+  padding: .2rem;
+  border-radius: .65rem;
+  background: linear-gradient(145deg, #ffdc95, #c58938);
+}
+
+.marca strong { color: #f4bc6c; }
+
+@media (min-width: 56rem) {
+  .acceso { grid-template-columns: minmax(0, 1.16fr) minmax(0, 1fr); }
+
+  .portada {
+    position: sticky;
+    top: 0;
+    display: flex;
+    height: 100dvh;
+    min-height: 32rem;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: clamp(2rem, 5vw, 5rem);
+    border-right: 1px solid #b986493b;
+    background:
+      linear-gradient(180deg, #0c0d16db 0%, #0c0d1622 43%, #090a11 100%),
+      url('/chess_background.jpg') center / cover;
+  }
+
+  .portada h1 {
+    margin: 0;
+    font-family: var(--retro-mono);
+    font-size: clamp(3.25rem, 7vw, 8rem);
+    font-weight: 800;
+    line-height: .84;
+    letter-spacing: -.055em;
+  }
+
+  .portada h1 em { color: #f4bc6c; font-style: normal; }
+
+  .portada p { margin-top: 1.5rem; color: #d3d5df; }
+
+  .marca-movil { display: none; }
+}

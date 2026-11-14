@@ -1,125 +1,162 @@
-import { Component, EventEmitter, Output, inject } from '@angular/core';
+import { Aviso } from '../aviso/aviso';
+import { Component, DestroyRef, EventEmitter, Output, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { FirebaseError } from 'firebase/app';
+import { finalize, timer } from 'rxjs';
+import { mensajeFirebase } from '../../services/firebase-data';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-registro',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [Aviso, CommonModule, FormsModule],
   template: `
-    <div class="bg-[#121620] border border-gray-800 rounded-2xl p-8 w-full max-w-md shadow-2xl relative">
+    <div class="acceso-tarjeta">
       <!-- Header -->
-      <h2 class="text-2xl font-bold text-white mb-1">Crea tu cuenta</h2>
-      <p class="text-gray-400 text-sm mb-6">Únete y comienza con 1,000 puntos ELO</p>
+      <h2 class="acceso-titulo">Crea tu cuenta</h2>
+      <p class="text-slate-400 text-sm mb-7">Únete y comienza con 1,000 puntos ELO</p>
 
       <!-- Tabs -->
-      <div class="grid grid-cols-2 bg-[#1a202c] p-1 rounded-xl mb-6 border border-gray-800">
-        <button type="button" (click)="onSwitchTab.emit('login')"
-                class="py-2.5 rounded-lg text-sm font-semibold transition text-gray-400 hover:text-white bg-transparent">
+      <div class="acceso-tabs">
+        <button type="button" [disabled]="loading()" (click)="onSwitchTab.emit('login')"
+                class="acceso-tab">
           Iniciar Sesión
         </button>
-        <button type="button" class="py-2.5 rounded-lg text-sm font-semibold transition text-white bg-[#d9a01a] shadow">
+        <button type="button" class="acceso-tab acceso-tab-activa">
           Registrarse
         </button>
       </div>
 
-      <!-- Error Alert -->
-      <div *ngIf="errorMsg" class="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg text-sm mb-4">
-        {{ errorMsg }}
-      </div>
+      @if (errorMsg()) {
+        <app-aviso class="mb-4" tipo="error" titulo="Revisa el registro" [mensaje]="errorMsg()" />
+      }
 
       <!-- Form -->
-      <form (submit)="onSubmit()">
-        <!-- Username -->
-        <div class="mb-4">
-          <label class="block text-[11px] font-bold text-gray-400 tracking-wider mb-2">NOMBRE DE USUARIO</label>
-          <input type="text" name="nombre" [(ngModel)]="nombre" required
-                 placeholder="magnus_fischer"
-                 class="w-full bg-[#181d2a] border border-gray-800 focus:border-[#d9a01a] focus:ring-1 focus:ring-[#d9a01a] rounded-xl py-3 px-4 text-white text-sm outline-none transition placeholder-gray-600" />
-        </div>
+      <form (ngSubmit)="onSubmit()" [attr.aria-busy]="loading()">
+        <fieldset [disabled]="loading()" class="min-w-0">
+          <!-- Username -->
+          <div class="mb-4">
+            <label for="registro-nombre" class="block text-[11px] font-bold text-gray-400 tracking-wider mb-2">NOMBRE DE USUARIO</label>
+            <input type="text" name="nombre" [(ngModel)]="nombre" required id="registro-nombre" autocomplete="nickname"
+                   placeholder="magnus_fischer"
+                   class="acceso-campo" />
+          </div>
 
-        <!-- Email -->
-        <div class="mb-4">
-          <label class="block text-[11px] font-bold text-gray-400 tracking-wider mb-2">CORREO ELECTRÓNICO</label>
-          <input type="email" name="correo" [(ngModel)]="correo" required
-                 placeholder="jugador@chess.com"
-                 class="w-full bg-[#181d2a] border border-gray-800 focus:border-[#d9a01a] focus:ring-1 focus:ring-[#d9a01a] rounded-xl py-3 px-4 text-white text-sm outline-none transition placeholder-gray-600" />
-        </div>
+          <!-- Email -->
+          <div class="mb-4">
+            <label for="registro-correo" class="block text-[11px] font-bold text-gray-400 tracking-wider mb-2">CORREO ELECTRÓNICO</label>
+            <input type="email" name="correo" spellcheck="false" autocapitalize="none" [(ngModel)]="correo" required id="registro-correo" autocomplete="email"
+                   placeholder="jugador@chess.com"
+                   class="acceso-campo" />
+          </div>
 
-        <!-- Password -->
-        <div class="mb-5">
-          <label class="block text-[11px] font-bold text-gray-400 tracking-wider mb-2">CONTRASEÑA</label>
-          <input type="password" name="contraseña" [(ngModel)]="contrasena" required
-                 placeholder="••••••••"
-                 class="w-full bg-[#181d2a] border border-gray-800 focus:border-[#d9a01a] focus:ring-1 focus:ring-[#d9a01a] rounded-xl py-3 px-4 text-white text-sm outline-none transition placeholder-gray-600" />
-        </div>
+          <!-- Password -->
+          <div class="mb-5">
+            <label for="registro-contrasena" class="block text-[11px] font-bold text-gray-400 tracking-wider mb-2">CONTRASEÑA</label>
+            <div class="relative">
+              <input [type]="mostrarContrasena ? 'text' : 'password'" name="contraseña" [(ngModel)]="contrasena" required minlength="6" id="registro-contrasena" autocomplete="new-password" aria-describedby="registro-requisitos"
+                   placeholder="••••••••"
+                   class="acceso-campo acceso-campo-clave" />
+              <button type="button" (click)="mostrarContrasena = !mostrarContrasena"
+                      [attr.aria-label]="mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                      aria-controls="registro-contrasena"
+                      class="absolute inset-y-0 right-0 px-3 text-sm font-medium text-gray-300 hover:text-white focus-visible:outline-[#d9a01a]">
+                {{ mostrarContrasena ? 'Ocultar' : 'Mostrar' }}
+              </button>
+            </div>
+            <p id="registro-requisitos" class="mt-2 text-xs text-gray-400">Usa al menos 6 caracteres.</p>
+          </div>
 
-        <!-- ELO Start Alert Info Box -->
-        <div class="flex items-center gap-2 bg-[#d9a01a]/5 border border-[#d9a01a]/20 text-[#d9a01a] px-4 py-3 rounded-xl text-xs mb-6 select-none">
-          <!-- Star/Trophy Icon -->
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-4 h-4 shrink-0">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499c.173-.439.78-.439.953 0l1.79 4.549a.75.75 0 0 0 .583.497l4.908.412c.473.04.662.63.292.961l-3.71 3.327a.75.75 0 0 0-.213.657l.96 4.88c.092.47-.404.83-.807.568L12 18.17a.75.75 0 0 0-.73 0l-4.148 2.63c-.403.256-.899-.104-.807-.569l.96-4.88a.75.75 0 0 0-.213-.657L3.354 11.23c-.37-.331-.182-.921.291-.96l4.908-.413a.75.75 0 0 0 .584-.497l1.79-4.549Z" />
-          </svg>
-          <span>Al registrarte, iniciarás con <strong class="font-bold">1,000 puntos</strong> de ranking ELO.</span>
-        </div>
+          <div class="mb-5">
+            <label for="registro-confirmacion" class="block text-[11px] font-bold text-gray-400 tracking-wider mb-2">CONFIRMA TU CONTRASEÑA</label>
+            <input [type]="mostrarContrasena ? 'text' : 'password'" name="confirmacion" [(ngModel)]="confirmacion"
+                   required id="registro-confirmacion" autocomplete="new-password"
+                   class="acceso-campo" />
+          </div>
 
-        <!-- Submit Button -->
-        <button type="submit" [disabled]="loading"
-                class="w-full bg-[#d9a01a] hover:bg-[#c28e13] disabled:bg-[#d9a01a]/50 text-[#0b0e14] py-3 rounded-xl font-bold transition shadow-lg shadow-[#d9a01a]/10 hover:shadow-[#d9a01a]/20 flex items-center justify-center gap-2 cursor-pointer">
-          <span *ngIf="loading" class="animate-spin rounded-full h-4 w-4 border-2 border-[#0b0e14] border-t-transparent"></span>
-          Crear cuenta
-        </button>
+          <!-- Submit Button -->
+          <button type="submit" [disabled]="loading()"
+                  class="acceso-boton">
+            <span *ngIf="loading()" class="animate-spin rounded-full h-4 w-4 border-2 border-[#0b0e14] border-t-transparent"></span>
+            {{ loading() ? 'Creando cuenta…' : 'Crear cuenta' }}
+          </button>
+        </fieldset>
       </form>
+      @if (esperaProlongada()) {
+        <app-aviso class="mt-4" tipo="espera" titulo="Seguimos procesando tu solicitud"
+          mensaje="El servidor está tardando en responder. Puedes esperar en esta pantalla." />
+      }
     </div>
   `
 })
 export class Registro {
   @Output() onSwitchTab = new EventEmitter<string>();
 
+  @Output() cuentaCreada = new EventEmitter<string>();
+
   private authService = inject(AuthService);
   private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
   nombre = '';
   correo = '';
   contrasena = '';
-  errorMsg = '';
-  loading = false;
+  confirmacion = '';
+  readonly errorMsg = signal('');
+  readonly loading = signal(false);
+  readonly esperaProlongada = signal(false);
+  mostrarContrasena = false;
 
   onSubmit() {
-    if (!this.nombre || !this.correo || !this.contrasena) {
-      this.errorMsg = 'Por favor, rellene todos los campos.';
+    if (this.loading()) return;
+
+    const correo = this.correo.trim();
+    const nombre = this.nombre.trim();
+    if (!nombre || !correo || !this.contrasena || !this.confirmacion) {
+      this.errorMsg.set('Completa todos los campos.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(this.correo)) {
-      this.errorMsg = 'Por favor, introduce un correo electrónico válido (ejemplo@correo.com).';
+    if (!emailRegex.test(correo)) {
+      this.errorMsg.set('Escribe un correo electrónico válido.');
       return;
     }
 
-    this.loading = true;
-    this.errorMsg = '';
+    if (this.contrasena.length < 6) {
+      this.errorMsg.set('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
 
-    this.authService.registro(this.nombre, this.correo, this.contrasena).subscribe({
-      next: () => {
-        // Auto-login after registration
-        this.authService.login(this.correo, this.contrasena).subscribe({
-          next: () => {
-            this.loading = false;
-            this.router.navigate(['/dashboard']);
-          },
-          error: (err) => {
-            this.loading = false;
-            // If auto-login fails, redirect anyway so they can try to login manually
-            this.router.navigate(['/inicio']);
-          }
-        });
+    if (this.contrasena !== this.confirmacion) {
+      this.errorMsg.set('Las contraseñas no coinciden.');
+      return;
+    }
+
+    this.loading.set(true);
+    this.errorMsg.set('');
+
+    const aviso = timer(4_000).subscribe(() => this.esperaProlongada.set(true));
+    this.authService.registro(nombre, correo, this.contrasena).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => {
+        aviso.unsubscribe();
+        this.esperaProlongada.set(false);
+        this.loading.set(false);
+      })
+    ).subscribe({
+      next: usuario => {
+        if (usuario) this.router.navigate(['/dashboard'], { info: 'registro-completado' });
+        else this.cuentaCreada.emit(correo);
       },
       error: (err) => {
-        this.loading = false;
-        this.errorMsg = err.error?.mensaje || 'Error al registrar la cuenta. Inténtelo de nuevo.';
+        const fallback = err instanceof FirebaseError
+          ? `Firebase rechazó el registro (${err.code}).`
+          : 'No se pudo crear la cuenta. Inténtalo de nuevo.';
+        this.errorMsg.set(mensajeFirebase(err, fallback));
       }
     });
   }

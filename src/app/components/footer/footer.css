@@ -1,0 +1,57 @@
+.pie {
+  color: #eeeaf6;
+  border-top: 1px solid #f7c77e50;
+  background: var(--retro-damero);
+}
+
+.marco {
+  max-width: 80rem;
+  margin-inline: auto;
+  padding: 2rem clamp(1rem, 4vw, 2.5rem) 0;
+  background: linear-gradient(100deg, #141321f5, #181425e8);
+}
+
+.columnas { display: flex; flex-wrap: wrap; gap: 1.75rem clamp(1rem, 4vw, 3rem); }
+.identidad { flex: 2 1 13rem; }
+.grupo { flex: 1 1 8rem; display: grid; gap: .55rem; align-content: start; }
+.guia { flex-basis: 11rem; }
+
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: .65rem;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -.04em;
+}
+
+.marca img { border-radius: .45rem; padding: .15rem; background: linear-gradient(145deg, #ffe0a8, #c58938); }
+.marca strong, .cierre button span { color: var(--retro-oro); }
+p { color: #c8bfd6; font-size: .84rem; line-height: 1.5; }
+.identidad p { max-width: 26ch; margin-top: .75rem; }
+
+h2 {
+  color: var(--retro-oro);
+  font: 700 .78rem var(--retro-mono);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+.grupo a, summary, .cierre button { color: #e4d9ef; font-size: .85rem; }
+summary, .cierre button { cursor: pointer; }
+details p { margin-top: .35rem; }
+.grupo a:hover, summary:hover, .cierre button:hover { color: var(--retro-oro); }
+:where(a, summary, button):focus-visible { outline: 2px solid var(--retro-oro); outline-offset: 3px; }
+
+.cierre {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem;
+  margin-top: 1.6rem;
+  border-top: 1px solid #ded1ff26;
+  color: #c8bfd6;
+  font-family: var(--retro-mono);
+}
+
+.cierre button { min-height: 2.75rem; }

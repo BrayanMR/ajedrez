@@ -1,37 +1,43 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { AuthService } from './auth.service';
+import { Injectable } from '@angular/core';
+import { collection, doc, getDocs, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
+import { Observable, defer } from 'rxjs';
+import { db } from '../config/firebase.config';
 import { Movimiento } from '../models/movimiento';
-import { API_CONFIG } from '../config/api.config';
+import { Partida } from '../models/partida';
+import { partidaRef, usuarioFirebase } from './firebase-data';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class MovimientoService {
-  private http = inject(HttpClient);
-  private authService = inject(AuthService);
-
-  private readonly API_URL = `${API_CONFIG.API_BASE_URL}/movimientos`;
-
-  registrarMovimiento(
-    partidaId: string,
-    turno: number,
-    pieza: string,
-    origen: string,
-    destino: string
-  ): Observable<Movimiento> {
-    return this.http.post<Movimiento>(
-      this.API_URL,
-      { partidaId, turno, pieza, origen, destino },
-      { headers: this.authService.getAuthHeaders() }
-    );
+  registrarMovimiento(partidaId: string, turno: number, pieza: string, origen: string, destino: string) {
+    return defer(() => runTransaction(db, async transaction => {
+      const { uid } = usuarioFirebase();
+      const partida = (await transaction.get(partidaRef(partidaId))).data() as Partida | undefined;
+      if (partida?.estado !== 'jugando') throw new Error('La partida no está activa.');
+      if (uid !== (turno % 2 === 1 ? partida.jugadorBlanco : partida.jugadorNegro)) {
+        throw new Error('Es el turno del otro jugador.');
+      }
+      const ref = doc(db, 'movimientos', `${partidaId}_${turno}`);
+      if ((await transaction.get(ref)).exists()) throw new Error('Ese turno ya se jugó.');
+      const movimiento: Movimiento = { id: ref.id, partidaId, turno, pieza, origen, destino, fecha: new Date().toISOString() };
+      transaction.set(ref, movimiento);
+      return movimiento;
+    }));
   }
 
-  obtenerMovimientosPartida(partidaId: string): Observable<Movimiento[]> {
-    return this.http.get<Movimiento[]>(
-      `${this.API_URL}/partida/${partidaId}`,
-      { headers: this.authService.getAuthHeaders() }
-    );
+  obtenerMovimientosPartida(partidaId: string) {
+    return defer(async () => {
+      const snapshot = await getDocs(this.consulta(partidaId));
+      return snapshot.docs.map(item => item.data() as Movimiento).sort((a, b) => a.turno - b.turno);
+    });
+  }
+
+  observarMovimientos(partidaId: string) {
+    return new Observable<Movimiento[]>(observer => onSnapshot(this.consulta(partidaId), snapshot => {
+      observer.next(snapshot.docs.map(item => item.data() as Movimiento).sort((a, b) => a.turno - b.turno));
+    }, error => observer.error(error)));
+  }
+
+  private consulta(partidaId: string) {
+    return query(collection(db, 'movimientos'), where('partidaId', '==', partidaId));
   }
 }

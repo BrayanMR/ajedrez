@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function player(game, uid) {
+      return game.jugadorBlanco == uid || game.jugadorNegro == uid;
+    }
+    function gamePath(id) {
+      return /databases/$(database)/documents/partidas/$(id);
+    }
+    function userPath(id) {
+      return /databases/$(database)/documents/usuarios/$(id);
+    }
+    function finished(game) {
+      return game.estado == 'terminada' || game.estado == 'empate';
+    }
+    function scored(before, after, uid, result, id) {
+      let won = result.estado == 'terminada' && result.ganador == uid;
+      let points = result.estado == 'empate' ? 5 : won ? 20 : -10;
+      let elo = before.get('elo', 1000) + points;
+      return after.diff(before).affectedKeys().hasOnly([
+          'elo', 'partidasJugadas', 'partidasGanadas', 'ultimaPartidaCalificada'
+        ])
+        && after.ultimaPartidaCalificada == id
+        && after.elo == (elo < 100 ? 100 : elo)
+        && after.partidasJugadas == before.get('partidasJugadas', 0) + 1
+        && after.partidasGanadas == before.get('partidasGanadas', 0) + (won ? 1 : 0);
+    }
+    function scoreUpdate(uid, before, after) {
+      let id = after.get('ultimaPartidaCalificada', '');
+      let path = gamePath(id);
+      let game = getAfter(path).data;
+      return id is string && id.size() > 0
+        && get(path).data.estado == 'jugando'
+        && finished(game) && player(game, uid) && player(game, request.auth.uid)
+        && scored(before, after, uid, game, id);
+    }
+    match /usuarios/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'id', 'nombre', 'correo', 'elo', 'partidasJugadas', 'partidasGanadas', 'fechaRegistro'
+        ])
+        && request.resource.data.id == uid
+        && request.resource.data.nombre is string
+        && request.resource.data.correo == request.auth.token.email
+        && request.resource.data.fechaRegistro is string
+        && request.resource.data.elo == 1000
+        && request.resource.data.partidasJugadas == 0
+        && request.resource.data.partidasGanadas == 0;
+      allow update: if signedIn() && (
+        (request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre'])
+          && request.resource.data.nombre is string)
+        || scoreUpdate(uid, resource.data, request.resource.data)
+      );
+    }
+    match /partidas/{id} {
+      function joins(before, after) {
+        return before.estado == 'espera' && after.estado == 'jugando'
+          && !player(before, request.auth.uid)
+          && after.diff(before).affectedKeys().hasOnly(['estado', 'jugadorBlanco', 'jugadorNegro'])
+          && ((before.jugadorBlanco == null && after.jugadorBlanco == request.auth.uid
+              && after.jugadorNegro == before.jugadorNegro)
+            || (before.jugadorNegro == null && after.jugadorNegro == request.auth.uid
+              && after.jugadorBlanco == before.jugadorBlanco));
+      }
+      function settles(before, after) {
+        let white = userPath(before.jugadorBlanco);
+        let black = userPath(before.jugadorNegro);
+        return before.estado == 'jugando' && player(before, request.auth.uid)
+          && after.diff(before).affectedKeys().hasOnly(['estado', 'ganador', 'fechaFin'])
+          && after.fechaFin is string
+          && ((after.estado == 'empate' && after.ganador == null)
+            || (after.estado == 'terminada' && player(before, after.ganador)))
+          && scored(get(white).data, getAfter(white).data, before.jugadorBlanco, after, id)
+          && scored(get(black).data, getAfter(black).data, before.jugadorNegro, after, id);
+      }
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'id', 'jugadorBlanco', 'jugadorNegro', 'ganador', 'estado', 'fechaInicio', 'fechaFin'
+        ])
+        && request.resource.data.id == id
+        && request.resource.data.estado == 'espera'
+        && request.resource.data.ganador == null && request.resource.data.fechaFin == null
+        && request.resource.data.fechaInicio is string
+        && ((request.resource.data.jugadorBlanco == request.auth.uid && request.resource.data.jugadorNegro == null)
+          || (request.resource.data.jugadorNegro == request.auth.uid && request.resource.data.jugadorBlanco == null));
+      allow update: if signedIn() && (joins(resource.data, request.resource.data)
+        || settles(resource.data, request.resource.data));
+    }
+    match /movimientos/{id} {
+      function validMove(move) {
+        let game = get(gamePath(move.partidaId)).data;
+        return move.keys().hasOnly(['id', 'partidaId', 'turno', 'pieza', 'origen', 'destino', 'fecha'])
+          && move.turno is int && move.turno > 0
+          && id == move.partidaId + '_' + string(move.turno) && move.id == id
+          && move.origen.matches('^[a-h][1-8]$') && move.destino.matches('^[a-h][1-8]$')
+          && move.pieza is string && move.fecha is string
+          && game.estado == 'jugando'
+          && request.auth.uid == (move.turno % 2 == 1 ? game.jugadorBlanco : game.jugadorNegro);
+      }
+      allow read: if signedIn();
+      allow create: if signedIn() && validMove(request.resource.data);
+    }
+  }
+}

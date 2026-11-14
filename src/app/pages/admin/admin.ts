@@ -1,7 +1,8 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Navbar } from '../../components/navbar/navbar';
 import { UsuarioService } from '../../services/usuario.service';
+import { finalize } from 'rxjs';
 import { Usuario } from '../../models/usuario';
 
 @Component({
@@ -9,7 +10,7 @@ import { Usuario } from '../../models/usuario';
   standalone: true,
   imports: [CommonModule, Navbar],
   template: `
-    <div class="min-h-screen bg-[#0b0e14] text-white flex flex-col">
+    <div class="retro-pagina flex flex-col">
       <!-- Navbar -->
       <app-navbar></app-navbar>
 
@@ -17,15 +18,18 @@ import { Usuario } from '../../models/usuario';
       <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8 flex flex-col gap-6">
         
         <!-- Header -->
-        <div class="text-left">
-          <h2 class="text-3xl font-extrabold tracking-tight">Panel del Administrador</h2>
+        <div class="retro-portada cabecera-admin">
+          <h1 class="retro-titulo">Panel de administración</h1>
           <p class="text-gray-400 text-sm mt-1">Gestión general del sistema: Monitoreo de usuarios, puntuaciones y actividad.</p>
         </div>
 
         <!-- Users Management Card -->
-        <section class="bg-[#121620] border border-gray-800 rounded-2xl p-5 shadow">
+        <section class="retro-panel p-5 shadow">
           <h3 class="text-lg font-bold text-white mb-4">Usuarios Registrados</h3>
           
+          @if (cargando()) { <p role="status" class="mb-3 text-sm text-gray-300">Cargando usuarios…</p> }
+          @if (error()) { <p role="alert" class="mb-3 text-sm text-red-300">No se pudieron cargar los usuarios.</p> }
+          @if (!cargando() && !error() && !usuarios().length) { <p class="mb-3 text-sm text-gray-300">No hay usuarios registrados.</p> }
           <div class="overflow-x-auto">
             <table class="w-full text-left text-sm">
               <thead>
@@ -39,7 +43,7 @@ import { Usuario } from '../../models/usuario';
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-800/40">
-                <tr *ngFor="let u of usuarios" class="hover:bg-white/[0.01]">
+                <tr *ngFor="let u of usuarios()" class="hover:bg-white/[0.01]">
                   <!-- Name -->
                   <td class="py-3.5 font-semibold text-white">
                     {{ u.nombre }}
@@ -61,7 +65,7 @@ import { Usuario } from '../../models/usuario';
                   </td>
 
                   <!-- ELO -->
-                  <td class="py-3.5 text-right text-[#d9a01a] font-bold">
+                  <td class="py-3.5 text-right text-[#f7c77e] font-bold">
                     {{ u.elo || 1000 }} pts
                   </td>
 
@@ -73,26 +77,51 @@ import { Usuario } from '../../models/usuario';
               </tbody>
             </table>
           </div>
+          @if (!cargando() && (siguiente() || error())) {
+            <button type="button" class="mt-4 rounded-lg border border-amber-300/30 px-4 py-2 text-sm text-[#f7c77e]"
+              (click)="cargarUsuarios()">{{ error() ? 'Reintentar' : 'Cargar más usuarios' }}</button>
+          }
         </section>
 
       </main>
     </div>
+  `,
+  styles: `
+    .cabecera-admin {
+      flex: none;
+      padding: .875rem clamp(1rem, 3vw, 1.5rem);
+      border-radius: .625rem;
+    }
+
+    .cabecera-admin h1 {
+      font-size: clamp(1.25rem, 3vw, 1.75rem);
+    }
   `
 })
 export class AdminPage implements OnInit {
   private usuarioService = inject(UsuarioService);
 
-  usuarios: Usuario[] = [];
+  readonly usuarios = signal<Usuario[]>([]);
+  readonly siguiente = signal<string | undefined>(undefined);
+  readonly cargando = signal(false);
+  readonly error = signal(false);
 
   ngOnInit() {
     this.cargarUsuarios();
   }
 
   cargarUsuarios() {
-    this.usuarioService.listarUsuarios().subscribe({
-      next: (data) => {
-        this.usuarios = data;
-      }
+    if (this.cargando()) return;
+    this.cargando.set(true);
+    this.error.set(false);
+    this.usuarioService.listarUsuarios(this.siguiente()).pipe(
+      finalize(() => this.cargando.set(false))
+    ).subscribe({
+      next: ({ usuarios, siguiente }) => {
+        this.usuarios.update(actuales => [...actuales, ...usuarios]);
+        this.siguiente.set(siguiente);
+      },
+      error: () => this.error.set(true)
     });
   }
 

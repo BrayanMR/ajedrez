@@ -1,34 +1,22 @@
-# Despliegue (Render Backend + Netlify Frontend)
+# Despliegue con Firebase
 
-## 1) Render (backend)
-- Deployar la carpeta `backend/`.
-- Endpoint esperado:
-  - HTTP: `https://TU_BACKEND.onrender.com/api/...`
-  - WS (Socket.io): `https://TU_BACKEND.onrender.com`
+Para activar las consultas acotadas del historial, publica los índices de
+`firestore.indexes.json` con `firebase deploy --only firestore:indexes --project aljedrez-8962d`.
+Hasta que los índices estén listos, el historial usa la consulta anterior.
 
-## 2) Netlify (frontend - Angular)
-- Build: `npm run build`
-- Publish directory: `dist/aljedrez/browser`
+El frontend usa Firebase Authentication y Firestore del proyecto `aljedrez-8962d`.
+Los usuarios existentes pueden acceder con sus credenciales de Firebase. La aplicación
+conserva los UID y lee las colecciones existentes `usuarios`, `partidas` y `movimientos`.
+El ranking se calcula a partir de los perfiles.
 
-## 3) Conectar frontend ↔ backend
-Archivo: `src/app/config/api.config.ts`
-- Reemplazar:
-  - `API_BASE_URL` por `https://TU_BACKEND.onrender.com/api`
-  - `WS_BASE_URL` por `https://TU_BACKEND.onrender.com`
+1. Confirma que Correo electrónico/contraseña esté habilitado en Authentication.
+2. Con una cuenta autorizada, revisa las reglas activas y publica las de este repositorio
+   con `firebase deploy --only firestore:rules --project aljedrez-8962d`.
+3. Ejecuta `npm run build` y publica `dist/aljedrez/browser` en el hosting del frontend.
+4. Verifica con dos cuentas el acceso, la creación de partida, la sincronización de
+   movimientos y el resultado antes de retirar el servicio de Render.
 
-Nota: tu `api.config.ts` actualmente está en `http://localhost`. Cámbialo antes de hacer el build para Netlify.
-
-
-Luego ejecutar:
-- `npm run build`
-- subir a Netlify.
-
-## 4) URLs que se usan
-Se actualizan en:
-- `src/app/services/auth.service.ts`
-- `src/app/services/usuario.service.ts`
-- `src/app/services/partida.service.ts`
-- `src/app/services/movimiento.service.ts`
-- `src/app/services/ranking.service.ts`
-- `src/app/services/websocket.service.ts`
-
+Las reglas verifican la identidad, los turnos y la actualización atómica del ranking.
+La validación de las jugadas y el cálculo del resultado siguen ejecutándose en el
+cliente. Los perfiles se pueden leer con una sesión iniciada para el ranking y la
+pantalla de usuarios.

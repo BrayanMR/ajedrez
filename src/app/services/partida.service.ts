@@ -1,61 +1,122 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { AuthService } from './auth.service';
+import { Injectable } from '@angular/core';
+import { FirebaseError } from 'firebase/app';
+import { collection, doc, getDocs, limit, orderBy, query, runTransaction, setDoc, where } from 'firebase/firestore';
+import { defer, map, switchMap } from 'rxjs';
+import { db } from '../config/firebase.config';
 import { Partida } from '../models/partida';
-import { API_CONFIG } from '../config/api.config';
+import { Usuario } from '../models/usuario';
+import { agregarJugadores, cargarJugadores, cargarPerfilesPartidas, partidaRef, perfilRef, usuarioFirebase } from './firebase-data';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class PartidaService {
-  private http = inject(HttpClient);
-  private authService = inject(AuthService);
+  crearPartida(colorPiezas: 'blancas' | 'negras' | 'aleatorio') {
+    return defer(async () => {
+      const { uid } = usuarioFirebase();
+      const ref = doc(collection(db, 'partidas'));
+      const blancas = colorPiezas === 'blancas' || (colorPiezas === 'aleatorio' && Math.random() < 0.5);
+      const partida: Partida = {
+        id: ref.id,
+        jugadorBlanco: blancas ? uid : null,
+        jugadorNegro: blancas ? null : uid,
+        estado: 'espera',
+        ganador: null,
+        fechaInicio: new Date().toISOString(),
+        fechaFin: null
+      };
+      await setDoc(ref, partida);
+      return partida;
+    });
+  }
 
-  private readonly API_URL = `${API_CONFIG.API_BASE_URL}/partidas`;
+  unirseAPartida(id: string) {
+    return defer(() => runTransaction(db, async transaction => {
+      const { uid } = usuarioFirebase();
+      const ref = partidaRef(id);
+      const partida = (await transaction.get(ref)).data() as Partida | undefined;
+      if (!partida || partida.estado !== 'espera') throw new Error('La partida ya no está en espera.');
+      if (partida.jugadorBlanco === uid || partida.jugadorNegro === uid) {
+        throw new Error('No puedes unirte a tu propia partida.');
+      }
 
-  crearPartida(colorPiezas: 'blancas' | 'negras' | 'aleatorio'): Observable<Partida> {
-    return this.http.post<Partida>(
-      this.API_URL,
-      { colorPiezas },
-      { headers: this.authService.getAuthHeaders() }
+      const cambios = {
+        estado: 'jugando' as const,
+        jugadorBlanco: partida.jugadorBlanco ?? uid,
+        jugadorNegro: partida.jugadorNegro ?? uid
+      };
+      transaction.update(ref, cambios);
+      return { ...partida, ...cambios };
+    }));
+  }
+
+  listarPartidasActivas() {
+    const activas = query(collection(db, 'partidas'), where('estado', 'in', ['espera', 'jugando']));
+    return defer(() => getDocs(activas)).pipe(
+      map(snapshot => snapshot.docs.map(item => item.data() as Partida)),
+      switchMap(partidas => this.conPerfiles(partidas))
     );
   }
 
-  unirseAPartida(partidaId: string): Observable<any> {
-    return this.http.post<any>(
-      `${this.API_URL}/${partidaId}/unirse`,
-      {},
-      { headers: this.authService.getAuthHeaders() }
-    );
+  listarHistorialUsuario(maximo?: number, incluirPerfiles = true) {
+    return defer(async () => {
+      const { uid } = usuarioFirebase();
+      const partidas = collection(db, 'partidas');
+      const campos = ['jugadorBlanco', 'jugadorNegro'];
+      const resultados = await Promise.all(campos.map(async campo => {
+        const jugador = where(campo, '==', uid);
+        if (maximo === undefined) return getDocs(query(partidas, jugador));
+        try {
+          return await getDocs(query(partidas, jugador, where('estado', 'in', ['terminada', 'empate']),
+            orderBy('fechaInicio', 'desc'), limit(maximo)));
+        } catch (error) {
+          if (!(error instanceof FirebaseError) || error.code !== 'failed-precondition') throw error;
+          return getDocs(query(partidas, jugador));
+        }
+      }));
+      const historial = resultados.flatMap(resultado => resultado.docs.map(item => item.data() as Partida));
+      const ordenado = historial.filter(p => p.estado === 'terminada' || p.estado === 'empate')
+        .sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio));
+      const seleccion = ordenado.slice(0, maximo);
+      return incluirPerfiles ? this.conPerfiles(seleccion) : seleccion;
+    });
   }
 
-  obtenerPartida(partidaId: string): Observable<Partida> {
-    return this.http.get<Partida>(
-      `${this.API_URL}/${partidaId}`,
-      { headers: this.authService.getAuthHeaders() }
-    );
+  finalizarPartida(id: string, estado: 'terminada' | 'empate', ganador: string | null) {
+    return defer(async () => {
+      const { uid } = usuarioFirebase();
+      const partida = await runTransaction(db, async transaction => {
+        const ref = partidaRef(id);
+        const actual = (await transaction.get(ref)).data() as Partida | undefined;
+        if (!actual?.jugadorBlanco || !actual.jugadorNegro) throw new Error('La partida no está activa.');
+        const jugadores = [actual.jugadorBlanco, actual.jugadorNegro];
+        if (!jugadores.includes(uid)) throw new Error('No participas en esta partida.');
+        if (actual.estado === 'terminada' || actual.estado === 'empate') return actual;
+        if (actual.estado !== 'jugando' || (estado === 'terminada' && (!ganador || !jugadores.includes(ganador)))) {
+          throw new Error('El resultado no es válido.');
+        }
+        const perfiles = await Promise.all(jugadores.map(jugador => transaction.get(perfilRef(jugador))));
+        const cambios = { estado, ganador: estado === 'empate' ? null : ganador, fechaFin: new Date().toISOString() };
+        transaction.update(ref, cambios);
+        for (const perfil of perfiles) {
+          if (!perfil.exists()) throw new Error('Falta el perfil de un jugador.');
+          const usuario = perfil.data() as Usuario;
+          const gano = estado === 'terminada' && perfil.id === ganador;
+          const puntos = estado === 'empate' ? 5 : gano ? 20 : -10;
+          transaction.update(perfil.ref, {
+            ultimaPartidaCalificada: id,
+            elo: Math.max(100, (usuario.elo ?? 1000) + puntos),
+            partidasJugadas: (usuario.partidasJugadas ?? 0) + 1,
+            partidasGanadas: (usuario.partidasGanadas ?? 0) + Number(gano)
+          });
+        }
+        return { ...actual, ...cambios };
+      });
+      return { partida: await cargarJugadores(partida) };
+    });
   }
 
-  listarPartidasActivas(): Observable<Partida[]> {
-    return this.http.get<Partida[]>(
-      this.API_URL,
-      { headers: this.authService.getAuthHeaders() }
-    );
-  }
-
-  listarHistorialUsuario(): Observable<Partida[]> {
-    return this.http.get<Partida[]>(
-      `${this.API_URL}/historial/usuario`,
-      { headers: this.authService.getAuthHeaders() }
-    );
-  }
-
-  finalizarPartida(partidaId: string, estado: 'terminada' | 'empate', ganador: string | null): Observable<any> {
-    return this.http.put<any>(
-      `${this.API_URL}/${partidaId}/finalizar`,
-      { estado, ganador },
-      { headers: this.authService.getAuthHeaders() }
-    );
+  async conPerfiles(partidas: Partida[]) {
+    if (!partidas.length) return partidas;
+    const perfiles = await cargarPerfilesPartidas(partidas);
+    return partidas.map(partida => agregarJugadores(partida, perfiles));
   }
 }

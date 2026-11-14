@@ -1,30 +1,47 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { AuthService } from './auth.service';
+import { Injectable } from '@angular/core';
+import { defer, map } from 'rxjs';
+import { collection, documentId, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { db } from '../config/firebase.config';
 import { Ranking } from '../models/ranking';
-import { API_CONFIG } from '../config/api.config';
+import { Usuario } from '../models/usuario';
+import { listarPerfiles } from './firebase-data';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class RankingService {
-  private http = inject(HttpClient);
-  private authService = inject(AuthService);
-
-  private readonly API_URL = `${API_CONFIG.API_BASE_URL}/ranking`;
-
-  obtenerLeaderboard(): Observable<Ranking[]> {
-    return this.http.get<Ranking[]>(
-      this.API_URL,
-      { headers: this.authService.getAuthHeaders() }
-    );
+  obtenerLeaderboard(maximo?: number) {
+    return defer(async () => {
+      if (maximo === undefined) {
+        return (await listarPerfiles()).sort((a, b) => b.elo - a.elo || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
+      }
+      const snapshot = await getDocs(query(collection(db, 'usuarios'),
+        orderBy('elo', 'desc'), orderBy(documentId(), 'desc'), limit(maximo)));
+      return snapshot.docs.map(item => item.data() as Usuario);
+    }).pipe(map(perfiles => perfiles
+      .map((perfil, index): Ranking => ({
+        id: perfil.id,
+        usuarioId: perfil.id,
+        nombre: perfil.nombre,
+        puntos: perfil.elo,
+        posicion: index + 1,
+        nivel: this.nivel(perfil.elo),
+        partidasJugadas: perfil.partidasJugadas,
+        partidasGanadas: perfil.partidasGanadas
+      }))));
   }
 
-  obtenerRankingUsuario(usuarioId: string): Observable<Ranking> {
-    return this.http.get<Ranking>(
-      `${this.API_URL}/${usuarioId}`,
-      { headers: this.authService.getAuthHeaders() }
-    );
+  obtenerRankingUsuario(usuarioId: string) {
+    return this.obtenerLeaderboard().pipe(map(ranking => {
+      const jugador = ranking.find(item => item.usuarioId === usuarioId);
+      if (!jugador) throw new Error('No se encontró el ranking del jugador.');
+      return jugador;
+    }));
+  }
+
+  private nivel(elo: number) {
+    if (elo >= 2400) return 'Gran Maestro';
+    if (elo >= 2000) return 'Maestro';
+    if (elo >= 1600) return 'Avanzado';
+    if (elo >= 1200) return 'Intermedio';
+    return 'Principiante';
   }
 }

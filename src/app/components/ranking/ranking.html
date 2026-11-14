@@ -1,0 +1,119 @@
+<div class="arcade open-world-sector">
+  <!-- Capas de Inmersión Táctica Mundo Abierto -->
+  <div class="map-grid-layer" aria-hidden="true"></div>
+  <div class="radar-scanline-layer" aria-hidden="true"></div>
+  <div class="tactical-vignette" aria-hidden="true"></div>
+
+  <app-navbar />
+
+  <main class="marco">
+    <!-- Header del Cuadro de Almirantes -->
+    <header class="ranking-header">
+      <div class="header-content">
+        <div class="hud-tag">
+          <span class="live-dot"></span> ESCALAFÓN MILITAR GLOBAL // TEMPORADA ACTIVA
+        </div>
+        <h1 class="tactical-title">ALMIRANTAZGO SUPREMO</h1>
+        <p class="tactical-subtitle">Registro de comandantes de flota clasificados por potencia de fuego ELO.</p>
+      </div>
+      <div class="header-insignia" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor">
+          <polygon points="24 4 30 18 44 20 34 30 36 44 24 38 12 44 14 30 4 20 18 18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="24" cy="24" r="6" stroke-width="1.8"/>
+        </svg>
+      </div>
+    </header>
+
+    @if (cargando()) {
+      <div class="ranking-loading">
+        <div class="sonar-spinner"></div>
+        <p>BARRIDO DE TRANSMISIONES Y CÁLCULO DE ELO EN CURSO…</p>
+      </div>
+    } @else if (error()) {
+      <div class="ranking-error" role="alert">
+        <svg class="ico-error" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle cx="12" cy="12" r="10" stroke-width="2"/>
+          <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"/>
+          <circle cx="12" cy="16" r="1" fill="currentColor"/>
+        </svg>
+        <div>
+          <strong>ENLACE TÁCTICO INTERRUMPIDO</strong>
+          <p>No se pudieron recuperar las firmas de los comandantes.</p>
+        </div>
+        <button type="button" class="btn-retry" (click)="cargarRanking()">RECONECTAR</button>
+      </div>
+    } @else if (leaderboard().length) {
+      <!-- Podio de Comandantes Supremos (Top 3) -->
+      <section class="podio-sector" aria-label="Comandantes supremos">
+        @for (rank of podio(); track rank.usuarioId) {
+          <article class="podio-card" [class.lead-commander]="rank.posicion === 1" [class.pos-2]="rank.posicion === 2" [class.pos-3]="rank.posicion === 3">
+            <div class="card-corner tl"></div>
+            <div class="card-corner tr"></div>
+            <div class="card-corner bl"></div>
+            <div class="card-corner br"></div>
+
+            <div class="podio-rank-badge">
+              <span>0{{ rank.posicion }}</span>
+            </div>
+
+            <div class="podio-commander-meta">
+              <span class="rank-callsign">COMANDANTE SUPREMO</span>
+              <h2 class="commander-handle">{{ rank.nombre || 'Desconocido' }}</h2>
+              <span class="tier-pill">{{ rank.nivel }}</span>
+            </div>
+
+            <div class="podio-score">
+              <span class="score-num">{{ rank.puntos }}</span>
+              <span class="score-tag">ELO CALIBRE</span>
+            </div>
+          </article>
+        }
+      </section>
+
+      <!-- Tabla de Clasificación Completa HUD -->
+      <section class="tabla-sector">
+        <header class="table-header-bar">
+          <h2>CUADRO DE HONOR COMPLETO</h2>
+          <span class="table-legend">{{ leaderboard().length }} OFICIALES REGISTRADOS</span>
+        </header>
+
+        <div class="table-container" tabindex="0">
+          <table class="tactical-table">
+            <thead>
+              <tr>
+                <th scope="col" class="th-pos">RANGO</th>
+                <th scope="col" class="th-user">OFICIAL AL MANDO</th>
+                <th scope="col" class="th-games">INCURSIONES</th>
+                <th scope="col" class="th-wins">VICTORIAS</th>
+                <th scope="col" class="th-elo">POTENCIA ELO</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (rank of leaderboard(); track rank.usuarioId) {
+                <tr class="table-row" [class.is-current-user]="rank.usuarioId === usuario()?.id">
+                  <td class="td-pos">
+                    <span class="rank-badge-cell" [class.gold-top]="rank.posicion <= 3">#{{ rank.posicion }}</span>
+                  </td>
+                  <td class="td-user">
+                    <div class="user-cell-meta">
+                      <strong>{{ rank.nombre || 'Oficial' }}</strong>
+                      @if (rank.usuarioId === usuario()?.id) {
+                        <span class="you-indicator">TU FLOTA</span>
+                      }
+                      <small>{{ rank.nivel }}</small>
+                    </div>
+                  </td>
+                  <td class="td-games">{{ rank.partidasJugadas ?? 0 }}</td>
+                  <td class="td-wins">{{ rank.partidasGanadas ?? 0 }}</td>
+                  <td class="td-elo">
+                    <span class="elo-highlight">{{ rank.puntos }}</span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+  </main>
+</div>

@@ -1,0 +1,1247 @@
+/* ==========================================================================
+   LOBBY TÁCTICO MUNDO ABIERTO // BATTLESHIP CHESS WAR-ROOM 2026
+   ========================================================================== */
+
+:host {
+  --titanio-deep: #05070B;
+  --acero-naval: #0A0E17;
+  --acero-panel: #111726;
+  --acero-borde: #1C273C;
+  --acero-borde-glow: #243452;
+  
+  --sonar-cyan: #00F0FF;
+  --sonar-cyan-dim: rgba(0, 240, 255, 0.12);
+  --sonar-cyan-glow: 0 0 20px rgba(0, 240, 255, 0.25);
+  
+  --alerta-carmesi: #FF2A5F;
+  --alerta-carmesi-dim: rgba(255, 42, 95, 0.15);
+  --alerta-carmesi-glow: 0 0 20px rgba(255, 42, 95, 0.3);
+
+  --almirante-oro: #FFB703;
+  --almirante-oro-dim: rgba(255, 183, 3, 0.15);
+  --almirante-oro-glow: 0 0 22px rgba(255, 183, 3, 0.35);
+
+  --radar-verde: #00E676;
+  --texto-principal: #E2E8F0;
+  --texto-secundario: #8899AC;
+  --texto-atenuado: #4F6178;
+
+  --font-mono: ui-monospace, SFMono-Regular, "Roboto Mono", Menlo, Monaco, Consolas, monospace;
+}
+
+.lobby.open-world-sector {
+  position: relative;
+  min-height: 100dvh;
+  background-color: var(--titanio-deep);
+  color: var(--texto-principal);
+  overflow-x: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* --- CAPAS DE MUNDO ABIERTO / RETÍCULA NAVAL --- */
+.map-grid-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(to right, rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 55px 55px;
+  mask-image: radial-gradient(circle at 50% 30%, black 20%, transparent 80%);
+  z-index: 0;
+}
+
+.radar-scanline-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.12) 0px,
+    rgba(0, 0, 0, 0.12) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 1;
+}
+
+.tactical-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 15%, transparent 40%, rgba(3, 5, 8, 0.85) 90%);
+  z-index: 2;
+}
+
+.lobby-main {
+  position: relative;
+  z-index: 10;
+  max-width: 86rem;
+  margin: 0 auto;
+  padding: clamp(1rem, 2.5vw, 2.2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* --- ALERTA TÁCTICA HUD --- */
+.alerta-tactica {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.4rem;
+  border-left: 4px solid var(--sonar-cyan);
+  background: linear-gradient(90deg, var(--sonar-cyan-dim), rgba(10, 14, 23, 0.85));
+  backdrop-filter: blur(8px);
+  border-radius: 0 8px 8px 0;
+  font-family: var(--font-mono);
+}
+.alerta-tactica .ico-tactico {
+  width: 28px;
+  height: 28px;
+  color: var(--sonar-cyan);
+  flex-shrink: 0;
+}
+.alerta-tactica strong {
+  display: block;
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
+  color: var(--sonar-cyan);
+}
+.alerta-tactica p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--texto-secundario);
+}
+
+/* ==========================================================================
+   SECTOR 1: WAR ROOM BANNER (COMANDANTE & TELEMETRÍA)
+   ========================================================================== */
+.war-room-banner {
+  position: relative;
+  background: linear-gradient(135deg, rgba(17, 23, 38, 0.95), rgba(8, 12, 19, 0.98)),
+              radial-gradient(ellipse at 80% 20%, rgba(0, 240, 255, 0.08), transparent 60%);
+  border: 1px solid var(--acero-borde);
+  border-radius: 14px;
+  padding: clamp(1.2rem, 3vw, 2.2rem);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  overflow: hidden;
+}
+
+.war-room-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 160px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--sonar-cyan), transparent);
+}
+
+.hud-top-telemetry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--texto-atenuado);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 0.8rem;
+}
+
+.pulse-beacon {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: var(--radar-verde);
+  border-radius: 50%;
+  margin-right: 6px;
+  box-shadow: 0 0 10px var(--radar-verde);
+  animation: pulse-beacon 1.8s infinite ease-in-out;
+}
+
+@keyframes pulse-beacon {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.war-room-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+@media (min-width: 50rem) {
+  .war-room-grid {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+.commander-card {
+  display: flex;
+  align-items: center;
+  gap: 1.3rem;
+}
+
+.commander-rank-badge {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(255, 183, 3, 0.15), rgba(0, 240, 255, 0.1));
+  border: 1px solid rgba(255, 183, 3, 0.4);
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(255, 183, 3, 0.15);
+  clip-path: polygon(15% 0%, 85% 0%, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0% 85%, 0% 15%);
+}
+
+.naval-crest {
+  width: 36px;
+  height: 36px;
+  color: var(--almirante-oro);
+}
+
+.commander-info .sector-sub {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--sonar-cyan);
+  text-transform: uppercase;
+}
+
+.callsign-title {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 0.15rem 0 0.35rem;
+  color: #FFFFFF;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+.rank-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  background: rgba(255, 183, 3, 0.12);
+  border: 1px solid rgba(255, 183, 3, 0.3);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--almirante-oro);
+}
+
+/* --- BOTÓN DESPLIEGUE RÁPIDO (BATTLE STATIONS) --- */
+.btn-battle-deploy {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, #FFB703, #D48B00);
+  color: #080C14;
+  border: none;
+  padding: 1.1rem 1.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: var(--almirante-oro-glow), 0 10px 25px rgba(0, 0, 0, 0.5);
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+}
+
+.btn-battle-deploy:hover {
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.1);
+  box-shadow: 0 0 35px rgba(255, 183, 3, 0.55), 0 15px 30px rgba(0, 0, 0, 0.6);
+}
+
+.btn-battle-deploy:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.btn-radar-sweep {
+  position: absolute;
+  inset: -150%;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(255, 255, 255, 0.4) 30deg, transparent 60deg);
+  animation: radar-sweep 4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes radar-sweep {
+  100% { transform: rotate(360deg); }
+}
+
+.btn-inner-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.btn-icon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.btn-text-block {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.btn-lead {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.btn-sub {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.chevron-action {
+  width: 20px;
+  height: 20px;
+  stroke-width: 3;
+  margin-left: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+.btn-battle-deploy:hover .chevron-action {
+  transform: translateX(4px);
+}
+
+/* --- TELEMETRÍA DE ARTILLERÍA --- */
+.telemetry-dock {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 1.2rem;
+}
+
+.telemetry-cell {
+  background: rgba(10, 14, 23, 0.6);
+  border: 1px solid var(--acero-borde);
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.telemetry-cell::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--acero-borde-glow), transparent);
+}
+
+.telemetry-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--texto-secundario);
+}
+
+.telemetry-ico {
+  width: 14px;
+  height: 14px;
+  color: var(--sonar-cyan);
+}
+
+.telemetry-val {
+  font-family: var(--font-mono);
+  font-size: clamp(1.4rem, 2.6vw, 2.1rem);
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0.25rem 0;
+  letter-spacing: -0.02em;
+}
+
+.telemetry-val.gold-metric {
+  color: var(--almirante-oro);
+  text-shadow: 0 0 15px rgba(255, 183, 3, 0.3);
+}
+
+.telemetry-val.cyan-metric {
+  color: var(--sonar-cyan);
+  text-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+}
+
+.telemetry-sub {
+  font-size: 0.68rem;
+  color: var(--texto-atenuado);
+}
+
+/* ==========================================================================
+   SECTOR 2: MATRIZ DE MISIONES Y RADAR DE COMBATE
+   ========================================================================== */
+.tactical-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 68rem) {
+  .tactical-layout {
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+  }
+}
+
+.tactical-module {
+  background: var(--acero-panel);
+  border: 1px solid var(--acero-borde);
+  border-radius: 12px;
+  padding: 1.3rem;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.module-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 0.9rem;
+}
+
+.module-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.module-ico {
+  width: 20px;
+  height: 20px;
+  color: var(--sonar-cyan);
+}
+
+.radar-dot-live {
+  width: 10px;
+  height: 10px;
+  background-color: var(--sonar-cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--sonar-cyan);
+  animation: pulse-beacon 1.5s infinite;
+}
+
+.module-banner h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.module-caption {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--texto-atenuado);
+  letter-spacing: 0.08em;
+}
+
+.module-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.badge-counter {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  background: var(--sonar-cyan-dim);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  color: var(--sonar-cyan);
+  border-radius: 4px;
+}
+
+.btn-tactical-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--acero-borde);
+  color: var(--texto-secundario);
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-tactical-refresh:hover:enabled {
+  background: rgba(0, 240, 255, 0.08);
+  border-color: var(--sonar-cyan);
+  color: var(--sonar-cyan);
+}
+
+.ico-refresh {
+  width: 14px;
+  height: 14px;
+}
+
+.ico-refresh.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* --- TARJETAS DE DUELO (SONAR SKIRMISH CARDS) --- */
+.sonar-skirmish-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.skirmish-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(14, 20, 32, 0.85), rgba(9, 13, 21, 0.95));
+  border: 1px solid var(--acero-borde);
+  border-radius: 8px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.25s ease;
+}
+
+.skirmish-card:hover {
+  border-color: var(--sonar-cyan);
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.skirmish-card.in-combat {
+  border-color: rgba(255, 42, 95, 0.4);
+}
+
+.skirmish-card.in-combat:hover {
+  border-color: var(--alerta-carmesi);
+  box-shadow: 0 0 25px rgba(255, 42, 95, 0.15);
+}
+
+/* Decos angulares */
+.skirmish-corner-deco {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-color: var(--sonar-cyan);
+  pointer-events: none;
+}
+.skirmish-corner-deco.tl { top: -1px; left: -1px; border-top: 2px solid; border-left: 2px solid; }
+.skirmish-corner-deco.tr { top: -1px; right: -1px; border-top: 2px solid; border-right: 2px solid; }
+.skirmish-corner-deco.bl { bottom: -1px; left: -1px; border-bottom: 2px solid; border-left: 2px solid; }
+.skirmish-corner-deco.br { bottom: -1px; right: -1px; border-bottom: 2px solid; border-right: 2px solid; }
+
+.skirmish-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.beacon-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.beacon-status.waiting {
+  color: var(--sonar-cyan);
+}
+
+.beacon-status.combat {
+  color: var(--alerta-carmesi);
+}
+
+.ping-wave {
+  width: 8px;
+  height: 8px;
+  background-color: var(--sonar-cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--sonar-cyan);
+}
+
+.blink-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--alerta-carmesi);
+  border-radius: 50%;
+  animation: pulse-beacon 1s infinite;
+}
+
+.skirmish-id {
+  color: var(--texto-atenuado);
+  letter-spacing: 0.08em;
+}
+
+.skirmish-clash-body {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0;
+}
+
+.fleet-side {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.fleet-side.black-fleet {
+  justify-content: flex-end;
+}
+
+.fleet-hull {
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.fleet-hull.dark {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 42, 95, 0.35);
+  color: var(--alerta-carmesi);
+}
+
+.piece-vector {
+  width: 24px;
+  height: 24px;
+}
+
+.fleet-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.fleet-meta.text-right {
+  text-align: right;
+}
+
+.fleet-designation {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--texto-atenuado);
+  letter-spacing: 0.08em;
+}
+
+.fleet-commander {
+  font-size: 0.95rem;
+  font-weight: 750;
+  color: #FFFFFF;
+}
+
+.fleet-rating {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--almirante-oro);
+}
+
+/* Eje de Choque VS */
+.clash-axis {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+}
+
+.crosshair-vector {
+  position: absolute;
+  inset: 0;
+  color: rgba(0, 240, 255, 0.25);
+  animation: spin 20s linear infinite;
+}
+
+.vs-text {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: var(--sonar-cyan);
+}
+
+.skirmish-action-dock {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.8rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-engage {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-engage.gold {
+  background: var(--almirante-oro);
+  color: #07090E;
+  box-shadow: 0 0 15px rgba(255, 183, 3, 0.25);
+}
+
+.btn-engage.gold:hover:enabled {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 0 25px rgba(255, 183, 3, 0.45);
+}
+
+.btn-engage.cyan {
+  background: var(--sonar-cyan);
+  color: #07090E;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
+}
+
+.btn-engage.cyan:hover:enabled {
+  filter: brightness(1.1);
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.45);
+}
+
+.action-ico {
+  width: 16px;
+  height: 16px;
+}
+
+.combat-in-progress-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--alerta-carmesi);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.ico-radar-mini {
+  width: 15px;
+  height: 15px;
+}
+
+/* Empty State Táctico */
+.sonar-empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  border: 1px dashed var(--acero-borde);
+  border-radius: 10px;
+  background: rgba(10, 14, 23, 0.4);
+}
+
+.empty-crosshair svg {
+  width: 56px;
+  height: 56px;
+  color: var(--texto-atenuado);
+  margin-bottom: 1rem;
+}
+
+.sonar-empty-state h3 {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  color: var(--texto-principal);
+  margin-bottom: 0.4rem;
+}
+
+.sonar-empty-state p {
+  font-size: 0.8rem;
+  color: var(--texto-secundario);
+  max-width: 28rem;
+  margin: 0 auto 1.4rem;
+}
+
+.btn-create-inline {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.65rem 1.3rem;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid var(--sonar-cyan);
+  color: var(--sonar-cyan);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-create-inline:hover {
+  background: var(--sonar-cyan);
+  color: #05070B;
+  box-shadow: var(--sonar-cyan-glow);
+}
+
+.sonar-scanning-state {
+  text-align: center;
+  padding: 2.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  color: var(--sonar-cyan);
+}
+
+/* ==========================================================================
+   SECTOR 3: SIDEBAR (HISTORIAL TÁCTICO & CUADRO DE HONOR)
+   ========================================================================== */
+.sidebar-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tactical-link {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--sonar-cyan);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.tactical-link:hover {
+  color: #FFFFFF;
+  text-decoration: underline;
+}
+
+/* Lista de Bitácora */
+.log-entries-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.log-entry-row {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(10, 14, 23, 0.65);
+  border: 1px solid var(--acero-borde);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  overflow: hidden;
+}
+
+.log-accent-stripe {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--acero-borde);
+}
+
+.log-entry-row.win .log-accent-stripe { background: var(--radar-verde); }
+.log-entry-row.defeat .log-accent-stripe { background: var(--alerta-carmesi); }
+.log-entry-row.draw .log-accent-stripe { background: var(--almirante-oro); }
+
+.log-match-names {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.log-vs {
+  font-size: 0.7rem;
+  color: var(--texto-atenuado);
+  margin: 0 0.35rem;
+}
+
+.log-meta {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--texto-atenuado);
+  letter-spacing: 0.06em;
+}
+
+.log-outcome {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.outcome-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+.outcome-tag.win { background: rgba(0, 230, 118, 0.15); color: var(--radar-verde); }
+.outcome-tag.loss { background: rgba(255, 42, 95, 0.15); color: var(--alerta-carmesi); }
+.outcome-tag.draw { background: rgba(255, 183, 3, 0.15); color: var(--almirante-oro); }
+
+.elo-diff {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--texto-secundario);
+}
+.elo-diff.plus { color: var(--radar-verde); }
+.elo-diff.minus { color: var(--alerta-carmesi); }
+
+/* Cuadro de Honor Naval */
+.admiral-rankings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admiral-rank-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.85rem;
+  background: rgba(10, 14, 23, 0.65);
+  border: 1px solid var(--acero-borde);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}
+
+.admiral-rank-row.crown-leader {
+  border-color: rgba(255, 183, 3, 0.4);
+  background: linear-gradient(90deg, rgba(255, 183, 3, 0.08), rgba(10, 14, 23, 0.8));
+}
+
+.gold-crest-badge, .silver-crest-badge, .bronze-crest-badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 900;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  clip-path: polygon(15% 0, 85% 0, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0 85%, 0 15%);
+}
+
+.gold-crest-badge {
+  background: var(--almirante-oro);
+  color: #07090E;
+  box-shadow: 0 0 12px rgba(255, 183, 3, 0.4);
+}
+
+.silver-crest-badge {
+  background: #CBD5E1;
+  color: #07090E;
+}
+
+.bronze-crest-badge {
+  background: #B45309;
+  color: #FFFFFF;
+}
+
+.admiral-identity {
+  display: flex;
+  flex-direction: column;
+}
+
+.admiral-name {
+  font-size: 0.88rem;
+  font-weight: 750;
+  color: #FFFFFF;
+}
+
+.admiral-tier {
+  font-size: 0.68rem;
+  color: var(--texto-secundario);
+}
+
+.admiral-score {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.score-number {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--almirante-oro);
+  display: block;
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 0.6rem;
+  color: var(--texto-atenuado);
+  letter-spacing: 0.06em;
+}
+
+.sidebar-empty {
+  padding: 1.5rem 0.8rem;
+  border: 1px dashed var(--acero-borde);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--texto-atenuado);
+}
+
+/* ==========================================================================
+   MODAL TÁCTICO DE CONFIGURACIÓN DE FLOTA (DIALOG)
+   ========================================================================== */
+.tactical-deployment-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(38rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--sonar-cyan);
+  border-radius: 12px;
+  background: var(--acero-panel);
+  color: var(--texto-principal);
+  box-shadow: var(--sonar-cyan-glow), 0 20px 60px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+}
+
+.tactical-deployment-dialog::backdrop {
+  background: rgba(3, 5, 8, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+.dialog-frame {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--acero-borde);
+  background: rgba(7, 10, 16, 0.8);
+}
+
+.dialog-header-deco {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.dialog-radar-icon {
+  width: 26px;
+  height: 26px;
+  color: var(--sonar-cyan);
+}
+
+.dialog-header h2 {
+  font-size: 1.15rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  margin: 0;
+  color: #FFFFFF;
+}
+
+.dialog-code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--sonar-cyan);
+  letter-spacing: 0.08em;
+}
+
+.btn-close-dialog {
+  background: transparent;
+  border: 1px solid var(--acero-borde);
+  color: var(--texto-atenuado);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  transition: all 0.15s ease;
+}
+
+.btn-close-dialog:hover {
+  border-color: var(--alerta-carmesi);
+  color: var(--alerta-carmesi);
+}
+
+.dialog-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.dialog-instruction {
+  font-size: 0.88rem;
+  color: var(--texto-secundario);
+  margin: 0;
+}
+
+.fleet-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.fleet-choice-card {
+  position: relative;
+  background: rgba(10, 14, 23, 0.7);
+  border: 1px solid var(--acero-borde);
+  border-radius: 8px;
+  padding: 1.2rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--texto-principal);
+}
+
+.fleet-choice-card:hover {
+  border-color: var(--sonar-cyan);
+  transform: translateY(-2px);
+  background: rgba(0, 240, 255, 0.05);
+}
+
+.fleet-choice-card[aria-pressed="true"] {
+  border-color: var(--almirante-oro);
+  background: linear-gradient(180deg, rgba(255, 183, 3, 0.12), rgba(10, 14, 23, 0.9));
+  box-shadow: 0 0 20px rgba(255, 183, 3, 0.25);
+}
+
+.fleet-choice-card[aria-pressed="true"] .choice-name {
+  color: var(--almirante-oro);
+}
+
+.choice-silhouette {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 0.8rem;
+  color: #FFFFFF;
+}
+
+.choice-silhouette.dark {
+  color: var(--alerta-carmesi);
+}
+
+.choice-name {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.3rem;
+}
+
+.choice-perk {
+  font-size: 0.62rem;
+  color: var(--texto-atenuado);
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.2rem 1.5rem;
+  border-top: 1px solid var(--acero-borde);
+  background: rgba(7, 10, 16, 0.8);
+}
+
+.btn-tactical-cancel {
+  background: transparent;
+  border: 1px solid var(--acero-borde);
+  color: var(--texto-secundario);
+  padding: 0.75rem 1.3rem;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.btn-tactical-cancel:hover:enabled {
+  background: rgba(255, 255, 255, 0.05);
+  color: #FFFFFF;
+}
+
+.btn-tactical-confirm {
+  position: relative;
+  background: var(--almirante-oro);
+  color: #07090E;
+  border: none;
+  padding: 0.75rem 1.6rem;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 0 18px rgba(255, 183, 3, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-tactical-confirm:hover:enabled {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 0 30px rgba(255, 183, 3, 0.55);
+}
+
+.btn-tactical-confirm:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

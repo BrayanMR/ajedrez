@@ -1,88 +1,113 @@
-import { Component, inject, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-navbar',
-  standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive],
   template: `
-    <nav class="bg-[#0b0e14] border-b border-gray-800 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-      <!-- Logo -->
-      <a routerLink="/dashboard" class="flex items-center gap-2 cursor-pointer select-none">
-        <div class="bg-[#d9a01a] p-1.5 rounded-lg flex items-center justify-center">
-          <!-- Gold Rook/Crown SVG -->
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="#0b0e14" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H5.25a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-          </svg>
+    <header class="cabecera" (keydown.escape)="cerrarMenu(true)">
+      <nav class="barra" aria-label="Navegación principal">
+        <a routerLink="/dashboard" class="marca" (click)="cerrarMenu()">
+          <img src="imagenes/logo.png" alt="" width="38" height="38">
+          <span>Chess<strong>Rank</strong></span>
+        </a>
+
+        <div #menu id="chessrank-menu" class="enlaces" [class.abierto]="menuAbierto()">
+          @for (enlace of enlaces; track enlace.ruta) {
+            <a [routerLink]="enlace.ruta" routerLinkActive="activo" ariaCurrentWhenActive="page"
+               [class.en-partida]="enlace.ruta === '/dashboard' && enPartida()"
+               [attr.aria-current]="enlace.ruta === '/dashboard' && enPartida() ? 'location' : null"
+               (click)="cerrarMenu(true)">
+              <span>{{ enlace.texto }}</span>
+              <span class="indicador" aria-hidden="true"></span>
+            </a>
+          }
         </div>
-        <span class="text-xl font-bold tracking-tight">Chess<span class="text-[#d9a01a]">Rank</span></span>
-      </a>
 
-      <!-- Menu links (Desktop) -->
-      <div class="hidden md:flex items-center gap-2">
-        <a routerLink="/dashboard" routerLinkActive="bg-[#171c26] text-[#d9a01a] border-[#d9a01a]" [routerLinkActiveOptions]="{exact: true}" 
-           class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-[#121620] transition border-b-2 border-transparent">
-          <span>Tablero</span>
-        </a>
-        <a routerLink="/ranking" routerLinkActive="bg-[#171c26] text-[#d9a01a] border-[#d9a01a]"
-           class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-[#121620] transition border-b-2 border-transparent">
-          <span>Ranking</span>
-        </a>
-        <a routerLink="/historial" routerLinkActive="bg-[#171c26] text-[#d9a01a] border-[#d9a01a]"
-           class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-[#121620] transition border-b-2 border-transparent">
-          <span>Historial</span>
-        </a>
-        <a routerLink="/perfil" routerLinkActive="bg-[#171c26] text-[#d9a01a] border-[#d9a01a]"
-           class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-[#121620] transition border-b-2 border-transparent">
-          <span>Perfil</span>
-        </a>
-        <a routerLink="/admin" routerLinkActive="bg-[#171c26] text-[#d9a01a] border-[#d9a01a]"
-           class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-[#121620] transition border-b-2 border-transparent">
-          <span>Admin</span>
-        </a>
-      </div>
-
-      <!-- User Info & Logout -->
-      <div class="flex items-center gap-4" *ngIf="usuario()">
-        <a routerLink="/perfil" class="flex items-center gap-3 bg-[#121620] hover:bg-[#171c26] border border-gray-800 rounded-full py-1 pl-1 pr-4 cursor-pointer transition select-none">
-          <!-- Avatar con iniciales -->
-          <div class="w-8 h-8 rounded-full bg-[#d9a01a] text-[#0b0e14] font-bold flex items-center justify-center text-sm shadow">
-            {{ obtenerIniciales(usuario()?.nombre) }}
-          </div>
-          <!-- Nombre y ELO -->
-          <div class="text-left flex flex-col justify-center">
-            <span class="text-xs font-semibold text-white leading-tight block">{{ usuario()?.nombre }}</span>
-            <span class="text-[10px] text-[#d9a01a] font-medium leading-none">{{ usuario()?.elo }} pts</span>
-          </div>
-        </a>
-
-        <!-- Logout button -->
-        <button (click)="logout()" class="text-gray-400 hover:text-[#f43f5e] transition p-2 rounded-lg hover:bg-[#171c26]" title="Cerrar Sesión">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 6.75 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-          </svg>
-        </button>
-      </div>
-    </nav>
-  `
+        <div class="acciones">
+          @if (usuario(); as jugador) {
+            <a routerLink="/perfil" class="perfil" aria-label="Mi perfil" (click)="cerrarMenu()">
+              <span class="avatar">{{ obtenerIniciales(jugador.nombre) }}</span>
+              <span class="jugador">
+                <span class="nombre">{{ jugador.nombre }}</span>
+              </span>
+              <span class="elo"><strong>{{ jugador.elo }}</strong> ELO</span>
+            </a>
+            <button type="button" class="icono salir" (click)="logout()" aria-label="Cerrar sesión" title="Cerrar sesión">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 4H5v16h5m-1-8h11m-4-4 4 4-4 4"/>
+              </svg>
+            </button>
+          }
+          <button #botonMenu type="button" class="icono menu" aria-controls="chessrank-menu"
+                  [attr.aria-expanded]="menuAbierto()" [attr.aria-label]="menuAbierto() ? 'Cerrar menú' : 'Abrir menú'"
+                  (click)="alternarMenu()">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <path [attr.d]="menuAbierto() ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'"/>
+            </svg>
+          </button>
+        </div>
+      </nav>
+    </header>
+  `,
+  styleUrl: './navbar.css'
 })
 export class Navbar {
-  private authService = inject(AuthService);
-  
-  usuario = this.authService.currentUser;
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
+  private readonly botonMenu = viewChild<ElementRef<HTMLButtonElement>>('botonMenu');
+  private readonly menu = viewChild<ElementRef<HTMLElement>>('menu');
 
-  obtenerIniciales(nombre?: string): string {
-    if (!nombre) return 'U';
-    const partes = nombre.trim().split(' ');
-    if (partes.length > 1) {
-      return (partes[0][0] + partes[1][0]).toUpperCase();
+  readonly usuario = this.authService.currentUser;
+  readonly menuAbierto = signal(false);
+  readonly enPartida = signal(this.router.url.startsWith('/jugador/'));
+  readonly enlaces = [
+    { ruta: '/dashboard', texto: 'Tablero' },
+    { ruta: '/ranking', texto: 'Ranking' },
+    { ruta: '/historial', texto: 'Historial' },
+    { ruta: '/perfil', texto: 'Perfil' },
+    { ruta: '/admin', texto: 'Admin' }
+  ];
+
+  constructor() {
+    this.router.events.pipe(
+      filter(evento => evento instanceof NavigationEnd),
+      takeUntilDestroyed()
+    ).subscribe(evento => {
+      this.enPartida.set(evento.urlAfterRedirects.startsWith('/jugador/'));
+      this.cerrarMenu();
+    });
+  }
+
+  cerrarMenu(devolverFoco = false) {
+    if (!this.menuAbierto()) return;
+    this.menuAbierto.set(false);
+    if (devolverFoco) this.botonMenu()?.nativeElement.focus();
+  }
+
+  alternarMenu() {
+    if (this.menuAbierto()) {
+      this.cerrarMenu();
+      return;
     }
-    return partes[0].substring(0, 2).toUpperCase();
+    this.menuAbierto.set(true);
+    afterNextRender(() => {
+      if (this.menuAbierto()) this.menu()?.nativeElement.querySelector('a')?.focus();
+    }, { injector: this.injector });
+  }
+
+  obtenerIniciales(nombre: string): string {
+    const partes = nombre.trim().split(/\s+/);
+    if (!partes[0]) return 'U';
+    return (partes.length > 1 ? partes[0][0] + partes[1][0] : partes[0].slice(0, 2)).toUpperCase();
   }
 
   logout() {
+    this.cerrarMenu();
     this.authService.logout();
   }
 }

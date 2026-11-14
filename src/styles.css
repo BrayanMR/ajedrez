@@ -1,3 +1,136 @@
 /* You can add global styles to this file, and also import other style files */
 
 @import "tailwindcss";
+
+.acceso-tarjeta {
+  padding: clamp(1.25rem, 3.4vw, 2.25rem);
+  border: 1px solid #b986493d;
+  border-radius: 1.5rem;
+  background: linear-gradient(155deg, #1a1d29, #10131d 58%);
+  box-shadow: 0 24px 64px #0006, inset 0 1px #ffffff0c;
+}
+
+.acceso-titulo {
+  margin-bottom: .375rem;
+  color: #f7f6f2;
+  font-size: clamp(1.75rem, 4vw, 2.35rem);
+  font-weight: 750;
+  line-height: 1.05;
+  letter-spacing: -.045em;
+}
+
+.acceso-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .25rem;
+  margin-bottom: 1.5rem;
+  padding: .25rem;
+  border: 1px solid #ffffff13;
+  border-radius: .8rem;
+  background: #090c15;
+}
+
+.acceso-tab {
+  min-height: 2.75rem;
+  border-radius: .6rem;
+  color: #a8adbf;
+  font-size: .875rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.acceso-tab:hover { color: #fff; }
+.acceso-tab-activa, .acceso-tab-activa:hover { background: #2d2530; color: #ffcc86; }
+
+.acceso-campo {
+  width: 100%;
+  min-height: 3rem;
+  padding: .65rem 1rem;
+  border: 1px solid #34394b;
+  border-radius: .75rem;
+  background: #0d101a;
+  color: #f5f5fb;
+  font-size: 1rem;
+}
+
+.acceso-campo::placeholder { color: #7c8299; }
+.acceso-campo-clave { padding-right: 6rem; }
+
+.acceso-campo:focus, .acceso-tab:focus-visible, .acceso-boton:focus-visible {
+  outline: 2px solid #f4bc6c;
+  outline-offset: 2px;
+}
+
+.acceso-boton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  width: 100%;
+  min-height: 3.125rem;
+  border-radius: .75rem;
+  background: linear-gradient(115deg, #ffe0a8, #ecac5a);
+  color: #201407;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.acceso-boton:hover:enabled { filter: brightness(1.1); }
+.acceso-boton:disabled { opacity: .58; cursor: wait; }
+
+:root {
+  --retro-oro: #f7c77e;
+  --retro-menta: #a0efcd;
+  --retro-mono: 'IBM Plex Mono', Consolas, monospace;
+  --retro-fondo: radial-gradient(ellipse at 50% 0, #27203b, #0b0d15 64%);
+  --retro-damero:
+    linear-gradient(90deg, #161225 12%, #16122573),
+    repeating-linear-gradient(0deg, transparent 0 5px, #d5baff15 5px 6px),
+    repeating-conic-gradient(#2f2441 0% 25%, #3b2c50 0% 50%) 0 0 / 3rem 3rem;
+}
+
+.retro-pagina {
+  min-height: 100dvh;
+  background: var(--retro-fondo);
+  color: #f5f2fc;
+}
+
+.retro-portada {
+  flex: 1;
+  min-width: 0;
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 1px solid #f7c77e55;
+  background: var(--retro-damero);
+}
+
+.retro-titulo {
+  color: #f5f2fc;
+  font-family: var(--retro-mono);
+  font-size: clamp(1.6rem, 4vw, 3rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -.06em;
+  text-shadow: 2px 2px #69436d;
+}
+
+.retro-panel {
+  border: 1px solid #ded1ff29;
+  border-radius: .7rem;
+  background: linear-gradient(145deg, #25203b, #161625 70%);
+}
+
+.retro-numero { font-family: var(--retro-mono); font-variant-numeric: tabular-nums; }
+.retro-pagina :where(a, button, input, select):focus-visible {
+  outline: 2px solid var(--retro-oro);
+  outline-offset: 2px;
+}
+
+.acceso-tarjeta {
+  border-color: #f7c77e45;
+  background: linear-gradient(155deg, #25203b, #141421 62%);
+}
+
+.acceso-titulo {
+  font-family: var(--retro-mono);
+  text-shadow: 2px 2px #69436d;
+}

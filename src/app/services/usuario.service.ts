@@ -1,49 +1,43 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { updatePassword } from 'firebase/auth';
+import { collection, documentId, getDocs, limit, orderBy, query, startAfter, updateDoc } from 'firebase/firestore';
+import { defer } from 'rxjs';
 import { AuthService } from './auth.service';
+import { asegurarPerfil, perfilRef, usuarioFirebase } from './firebase-data';
+import { db } from '../config/firebase.config';
 import { Usuario } from '../models/usuario';
-import { API_CONFIG } from '../config/api.config';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class UsuarioService {
-  private http = inject(HttpClient);
   private authService = inject(AuthService);
 
-  private readonly API_URL = `${API_CONFIG.API_BASE_URL}/usuarios`;
-
-  obtenerPerfil(): Observable<Usuario> {
-    return this.http.get<Usuario>(`${this.API_URL}/perfil`, {
-      headers: this.authService.getAuthHeaders()
-    }).pipe(
-      tap(usuario => {
-        this.authService.actualizarUsuarioLocal(usuario);
-      })
-    );
+  obtenerPerfil() {
+    return defer(async () => {
+      const perfil = await asegurarPerfil(usuarioFirebase());
+      this.authService.actualizarUsuarioLocal(perfil);
+      return perfil;
+    });
   }
 
-  actualizarPerfil(nombre: string, contraseña?: string): Observable<any> {
-    const body: any = { nombre };
-    if (contraseña) {
-      body.contraseña = contraseña;
-    }
-
-    return this.http.put<any>(`${this.API_URL}/perfil`, body, {
-      headers: this.authService.getAuthHeaders()
-    }).pipe(
-      tap(res => {
-        if (res.usuario) {
-          this.authService.actualizarUsuarioLocal(res.usuario);
-        }
-      })
-    );
+  actualizarPerfil(nombre: string, contraseña?: string) {
+    return defer(async () => {
+      const user = usuarioFirebase();
+      if (contraseña) await updatePassword(user, contraseña);
+      await updateDoc(perfilRef(user.uid), { nombre });
+      const usuario = await asegurarPerfil(user);
+      this.authService.actualizarUsuarioLocal(usuario);
+      return { usuario };
+    });
   }
 
-  listarUsuarios(): Observable<Usuario[]> {
-    return this.http.get<Usuario[]>(`${this.API_URL}`, {
-      headers: this.authService.getAuthHeaders()
+  listarUsuarios(cursor?: string) {
+    return defer(async () => {
+      const snapshot = await getDocs(query(collection(db, 'usuarios'), orderBy(documentId()),
+        ...(cursor === undefined ? [] : [startAfter(cursor)]), limit(25)));
+      return {
+        usuarios: snapshot.docs.map(item => item.data() as Usuario),
+        siguiente: snapshot.size === 25 ? snapshot.docs.at(-1)?.id : undefined
+      };
     });
   }
 }
